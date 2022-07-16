@@ -1,6 +1,6 @@
 import random
 from worker import Worker
-from parameter import WORKER_NUM, TOTAL_ROUND, SAVE_SHARD_MODEL_PATH, MALICIOUS_NODE_NUM, labels
+from parameter import WORKER_NUM, TOTAL_ROUND, SAVE_SHARD_MODEL_PATH, MALICIOUS_NODE_NUM, labels, ATTACK_TYPE
 from model import CNN
 import os
 import torch
@@ -56,8 +56,15 @@ for round in range(TOTAL_ROUND):
 
     for worker in workers:
         if worker.worker_id in malicious_worker:
-            print("~~~~~~~~~~~~~ {0} attack ~~~~~~~~~~~~~".format(worker.worker_id))
-            worker.weight_poison_attack()
+            if ATTACK_TYPE == "MODEL_POISONING":
+                print("~~~~~~~~~~~~~ {0} Model Poisoning attack ~~~~~~~~~~~~~".format(worker.worker_id))
+                worker.weight_poison_attack()
+            elif ATTACK_TYPE == "FGSM":
+                print("~~~~~~~~~~~~~ {0} FGSM attack ~~~~~~~~~~~~~".format(worker.worker_id))
+                worker.FGSM_attack()
+            elif ATTACK_TYPE == "PGD":
+                print("~~~~~~~~~~~~~ {0} PGD attack ~~~~~~~~~~~~~".format(worker.worker_id))
+                worker.FGSM_attack()
         else:
             print("------------- {0} training -------------".format(worker.worker_id))
             worker.loacl_learning()

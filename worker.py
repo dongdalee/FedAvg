@@ -4,6 +4,7 @@ import torch.nn.init
 from torch import nn
 from functools import reduce
 import os
+import torchattacks
 
 from model import CNN
 from dataloader import get_dataloader
@@ -41,6 +42,7 @@ class Worker:
             self.model.load_state_dict(torch.load("./model/" + str(current_round - 1) + "/aggregation.pt"), strict=False)
             print("[{0}]: global model inital".format(self.worker_id))
 
+
     def loacl_learning(self, training_epochs=p.TRAINING_EPOCH):
         print('Input training epochs: {0}'.format(training_epochs))
 
@@ -60,6 +62,7 @@ class Worker:
                 avg_cost += cost / self.total_batch
             print('[Epoch: {:>4}] cost = {:>.9}'.format(epoch + 1, avg_cost))
 
+
     def weight_poison_attack(self):
         self.model.layer1[0].weight.data += noise_constructor(self.model.layer1[0].weight.size())
         self.model.layer1[0].bias.data += noise_constructor(self.model.layer1[0].bias.size())
@@ -75,6 +78,51 @@ class Worker:
 
         self.model.fc2.weight.data += noise_constructor(self.model.fc2.weight.size())
         self.model.fc2.bias.data += noise_constructor(self.model.fc2.bias.size())
+
+
+    def FGSM_attack(self, training_epochs=p.TRAINING_EPOCH):
+        print('Input training epochs: {0}'.format(training_epochs))
+
+        for epoch in range(training_epochs):
+            avg_cost = 0
+
+            fgsm = torchattacks.FGSM(self.model, eps=p.EPSILON)
+
+            for data, target in self.data_loader:
+                data, target = data.to(device), target.to(device)
+                data = fgsm(data, target)
+
+                self.optimizer.zero_grad()
+                hypothesis = self.model(data)
+                cost = self.criterion(hypothesis, target)
+                cost.backward()
+                self.optimizer.step()
+
+                avg_cost += cost / self.total_batch
+            print('[Epoch: {:>4}] cost = {:>.9}'.format(epoch + 1, avg_cost))
+
+
+    def PGD_attack(self, training_epochs=p.TRAINING_EPOCH):
+        print('Input training epochs: {0}'.format(training_epochs))
+
+        for epoch in range(training_epochs):
+            avg_cost = 0
+
+            pgd = torchattacks.PGD(self.model, eps=p.EPSILON, alpha=p.ALPHA, steps=p.STEP)
+
+            for data, target in self.data_loader:
+                data, target = data.to(device), target.to(device)
+                data = pgd(data, target)
+
+                self.optimizer.zero_grad()
+                hypothesis = self.model(data)
+                cost = self.criterion(hypothesis, target)
+                cost.backward()
+                self.optimizer.step()
+
+                avg_cost += cost / self.total_batch
+            print('[Epoch: {:>4}] cost = {:>.9}'.format(epoch + 1, avg_cost))
+
 
 # 가우시안 노이즈 생성
 def noise_constructor(dim):
