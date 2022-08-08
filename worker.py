@@ -34,9 +34,14 @@ class Worker:
         self.data_loader, self.test_loader = get_dataloader('worker', self.worker_id)
 
         self.model = CNN().to(device)
+        self.trained_model = CNN()
+        if current_round-1 > 0:
+            self.trained_model.load_state_dict(torch.load("./model/" + str(current_round - 1) + "/aggregation.pt"), strict=False)
+
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=p.LEARNING_RATE)
         self.total_batch = len(self.data_loader)
+
 
         if current_round-1 > 0:
             self.model.load_state_dict(torch.load("./model/" + str(current_round - 1) + "/aggregation.pt"), strict=False)
@@ -86,7 +91,7 @@ class Worker:
         for epoch in range(training_epochs):
             avg_cost = 0
 
-            fgsm = torchattacks.FGSM(self.model, eps=p.EPSILON)
+            fgsm = torchattacks.FGSM(self.trained_model, eps=p.EPSILON)
 
             for data, target in self.data_loader:
                 data, target = data.to(device), target.to(device)
@@ -124,6 +129,25 @@ class Worker:
             print('[Epoch: {:>4}] cost = {:>.9}'.format(epoch + 1, avg_cost))
 
 
+    def data_noise_attack(self, training_epochs=p.TRAINING_EPOCH):
+        print('Input training epochs: {0}'.format(training_epochs))
+
+        for epoch in range(training_epochs):
+            avg_cost = 0
+
+            for data, target in self.data_loader:  # 미니 배치 단위로 꺼내온다. X는 미니 배치, Y느 ㄴ레이블.
+                data, target = data.to(device), target.to(device)
+                data = add_noise(data, p.NOISE_SIGMA)
+
+                self.optimizer.zero_grad()
+                hypothesis = self.model(data)
+                cost = self.criterion(hypothesis, target)
+                cost.backward()
+                self.optimizer.step()
+
+                avg_cost += cost / self.total_batch
+            print('[Epoch: {:>4}] cost = {:>.9}'.format(epoch + 1, avg_cost))
+
 # 가우시안 노이즈 생성
 def noise_constructor(dim):
     tensor_length = reduce(lambda x, y: x * y, dim)
@@ -134,6 +158,14 @@ def noise_constructor(dim):
     noise_tensor = torch.Tensor(noise_dim_split)
 
     return noise_tensor
+
+# for data poisoning attack
+def add_noise(_data, sigma):
+    noise = torch.randn_like(_data) * sigma # 정규분포상의 랜덤값
+    contaminate_data = _data + noise
+
+    return contaminate_data
+
 
 
 

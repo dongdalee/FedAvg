@@ -64,7 +64,10 @@ for round in range(TOTAL_ROUND):
                 worker.FGSM_attack()
             elif ATTACK_TYPE == "PGD":
                 print("~~~~~~~~~~~~~ {0} PGD attack ~~~~~~~~~~~~~".format(worker.worker_id))
-                worker.FGSM_attack()
+                worker.PGD_attack()
+            elif ATTACK_TYPE == "NOISE_ATTACK":
+                print("~~~~~~~~~~~~~ {0} Data Noise attack ~~~~~~~~~~~~~".format(worker.worker_id))
+                worker.data_noise_attack()
         else:
             print("------------- {0} training -------------".format(worker.worker_id))
             worker.loacl_learning()
