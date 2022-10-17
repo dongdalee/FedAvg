@@ -3,6 +3,7 @@ import torch
 from dataloader import get_dataloader
 from parameter import labels
 from torch import nn
+from geom_median.torch import compute_geometric_median
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -58,6 +59,71 @@ def fed_avg(*models):
 
     return fed_avg_model
 
+def median_update(*models):
+    server_model = CNN().to()
+
+    layer1_weight = []
+    layer1_bias = []
+
+    layer2_weight = []
+    layer2_bias = []
+
+    layer3_weight = []
+    layer3_bias = []
+
+    fc1_weight = []
+    fc1_bias = []
+
+    fc2_weight = []
+    fc2_bias = []
+
+    for model in models:
+        layer1_weight.append(model.layer1[0].weight.data)
+        layer1_bias.append(model.layer1[0].bias.data)
+
+        layer2_weight.append(model.layer2[0].weight.data)
+        layer2_bias.append(model.layer2[0].bias.data)
+
+        layer3_weight.append(model.layer3[0].weight.data)
+        layer3_bias.append(model.layer3[0].bias.data)
+
+        fc1_weight.append(model.fc1.weight.data)
+        fc1_bias.append(model.fc1.bias.data)
+
+        fc2_weight.append(model.fc2.weight.data)
+        fc2_bias.append(model.fc2.bias.data)
+
+    layer1_weight_median = compute_geometric_median(layer1_weight, None)
+    layer1_bias_median = compute_geometric_median(layer1_bias, None)
+
+    layer2_weight_median = compute_geometric_median(layer2_weight, None)
+    layer2_bias_median = compute_geometric_median(layer2_bias, None)
+
+    layer3_weight_median = compute_geometric_median(layer3_weight, None)
+    layer3_bias_median = compute_geometric_median(layer3_bias, None)
+
+    fc1_weight_median = compute_geometric_median(fc1_weight, None)
+    fc1_bias_median = compute_geometric_median(fc1_bias, None)
+
+    fc2_weight_median = compute_geometric_median(fc2_weight, None)
+    fc2_bias_median = compute_geometric_median(fc2_bias, None)
+
+    server_model.layer1[0].weight.data = layer1_weight_median.median
+    server_model.layer1[0].bias.data = layer1_bias_median.median
+
+    server_model.layer2[0].weight.data = layer2_weight_median.median
+    server_model.layer2[0].bias.data = layer2_bias_median.median
+
+    server_model.layer3[0].weight.data = layer3_weight_median.median
+    server_model.layer3[0].bias.data = layer3_bias_median.median
+
+    server_model.fc1.weight.data = fc1_weight_median.median
+    server_model.fc1.bias.data = fc1_bias_median.median
+
+    server_model.fc2.weight.data = fc2_weight_median.median
+    server_model.fc2.bias.data = fc2_bias_median.median
+
+    return server_model
 
 def test_label_predictions(model):
     model.eval()

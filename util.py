@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import confusion_matrix
+from typing import List
 
 
 def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title=None, cmap=plt.cm.Blues):
@@ -52,4 +53,29 @@ np.set_printoptions(precision=2)
 
 def gaussian_distribution(x, mean, sigma):
     return 1 / np.sqrt(2 * np.pi * sigma ** 2) * np.exp(-(x - mean) ** 2 / (2 * sigma ** 2))
+
+""" """
+# geometric mdeian with Weiszfeld's algorithm
+def getMinDistSum(positions: List[List[int]]) -> float:
+    if len(positions) == 1: return 0  # [1]
+    curr = list(map(lambda a: sum(a) / len(a), zip(*positions)))  # [2]
+    prev = [float('inf')] * 2
+
+    def get_norm(p1, p2):
+        return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
+
+    err = 1e-7  # [4]
+    epsilon = 1e-20  # [5]
+    while get_norm(curr, prev) > err:  # [3]
+        numerator, denominator = [0, 0], 0
+        for p in positions:
+            l2 = get_norm(curr, p) + epsilon
+            numerator[0] += p[0] / l2
+            numerator[1] += p[1] / l2
+            denominator += 1 / l2
+        next_p = [numerator[0] / denominator, numerator[1] / denominator]
+        curr, prev = next_p, curr
+
+    return [get_norm(p, curr) for p in positions]
+    # return sum([get_norm(p, curr) for p in positions])
 

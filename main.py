@@ -1,10 +1,10 @@
 import random
 from worker import Worker
-from parameter import WORKER_NUM, TOTAL_ROUND, SAVE_SHARD_MODEL_PATH, MALICIOUS_NODE_NUM, labels, ATTACK_TYPE
+from parameter import WORKER_NUM, TOTAL_ROUND, SAVE_SHARD_MODEL_PATH, MALICIOUS_NODE_NUM, labels, ATTACK_TYPE, AGGREGATION
 from model import CNN
 import os
 import torch
-from MachineLearningUtility import test_label_predictions, evaluation
+from MachineLearningUtility import test_label_predictions, evaluation, fed_avg, median_update
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -32,6 +32,8 @@ accuracy6 = []
 accuracy7 = []
 accuracy8 = []
 accuracy9 = []
+
+models = []
 
 
 for worker_index in range(WORKER_NUM):
@@ -74,6 +76,7 @@ for round in range(TOTAL_ROUND):
 
 
     # FedAvg
+    """ 
     fed_avg_model = CNN().to(device)
 
     fed_avg_model.layer1[0].weight.data.fill_(0.0)
@@ -121,6 +124,17 @@ for round in range(TOTAL_ROUND):
 
     fed_avg_model.fc2.weight.data = fed_avg_model.fc2.weight.data / WORKER_NUM
     fed_avg_model.fc2.bias.data = fed_avg_model.fc2.bias.data / WORKER_NUM
+    """
+
+    for worker in workers:
+        models.append(worker.model)
+
+    if AGGREGATION == "FEDAVG":
+        fed_avg_model = fed_avg(*models)
+    elif AGGREGATION == "MEDIAN":
+        fed_avg_model = median_update(*models)
+    else:
+        print("Wrong AGGREGATION parameter !")
 
     torch.save(fed_avg_model.state_dict(), "./model/" + str(round + 1) + "/aggregation.pt")
 
