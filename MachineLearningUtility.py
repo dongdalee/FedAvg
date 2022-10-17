@@ -1,9 +1,11 @@
 from model import CNN
 import torch
 from dataloader import get_dataloader
-from parameter import labels
+from parameter import labels, TRIMMED_MEAN_PERCENT
 from torch import nn
 from geom_median.torch import compute_geometric_median
+from functools import reduce
+from scipy import stats
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -124,6 +126,90 @@ def median_update(*models):
     server_model.fc2.bias.data = fc2_bias_median.median
 
     return server_model
+
+def trimmed_mean_update(*models):
+    resize_layer1_weight = []
+    resize_layer1_bias = []
+
+    resize_layer2_weight = []
+    resize_layer2_bias = []
+
+    resize_layer3_weight = []
+    resize_layer3_bias = []
+
+    resize_fc1_weight = []
+    resize_fc1_bias = []
+
+    resize_fc2_weight = []
+    resize_fc2_bias = []
+
+    for model in models:
+        resize_model_layer1_weight = model.layer1[0].weight.data.reshape(reduce(lambda x, y: x * y, model.layer1[0].weight.data.size())).numpy()
+        resize_model_layer1_bias = model.layer1[0].bias.data.reshape(reduce(lambda x, y: x * y, model.layer1[0].bias.data.size())).numpy()
+
+        resize_model_layer2_weight = model.layer2[0].weight.data.reshape(reduce(lambda x, y: x * y, model.layer2[0].weight.data.size())).numpy()
+        resize_model_layer2_bias = model.layer2[0].bias.data.reshape(reduce(lambda x, y: x * y, model.layer2[0].bias.data.size())).numpy()
+
+        resize_model_layer3_weight = model.layer3[0].weight.data.reshape(reduce(lambda x, y: x * y, model.layer3[0].weight.data.size())).numpy()
+        resize_model_layer3_bias = model.layer3[0].bias.data.reshape(reduce(lambda x, y: x * y, model.layer3[0].bias.data.size())).numpy()
+
+        resize_model_fc1_weight = model.fc1.weight.data.reshape(reduce(lambda x, y: x * y, model.fc1.weight.data.size())).numpy()
+        resize_model_fc1_bias = model.fc1.bias.data.reshape(reduce(lambda x, y: x * y, model.fc1.bias.data.size())).numpy()
+
+        resize_model_fc2_weight = model.fc2.weight.data.reshape(reduce(lambda x, y: x * y, model.fc2.weight.data.size())).numpy()
+        resize_model_fc2_bias = model.fc2.bias.data.reshape(reduce(lambda x, y: x * y, model.fc2.bias.data.size())).numpy()
+
+        resize_layer1_weight.append(resize_model_layer1_weight)
+        resize_layer1_bias.append(resize_model_layer1_bias)
+
+        resize_layer2_weight.append(resize_model_layer2_weight)
+        resize_layer2_bias.append(resize_model_layer2_bias)
+
+        resize_layer3_weight.append(resize_model_layer3_weight)
+        resize_layer3_bias.append(resize_model_layer3_bias)
+
+        resize_fc1_weight.append(resize_model_fc1_weight)
+        resize_fc1_bias.append(resize_model_fc1_bias)
+
+        resize_fc2_weight.append(resize_model_fc2_weight)
+        resize_fc2_bias.append(resize_model_fc2_bias)
+
+
+    agg_layer1_weight = torch.Tensor(stats.trim_mean(resize_layer1_weight, TRIMMED_MEAN_PERCENT)).reshape(models[0].layer1[0].weight.data.size())
+    agg_layer1_bias = torch.Tensor(stats.trim_mean(resize_layer1_bias, TRIMMED_MEAN_PERCENT)).reshape(models[0].layer1[0].bias.data.size())
+
+    agg_layer2_weight = torch.Tensor(stats.trim_mean(resize_layer2_weight, TRIMMED_MEAN_PERCENT)).reshape(models[0].layer2[0].weight.data.size())
+    agg_layer2_bias = torch.Tensor(stats.trim_mean(resize_layer2_bias, TRIMMED_MEAN_PERCENT)).reshape(models[0].layer2[0].bias.data.size())
+
+    agg_layer3_weight = torch.Tensor(stats.trim_mean(resize_layer3_weight, TRIMMED_MEAN_PERCENT)).reshape(models[0].layer3[0].weight.data.size())
+    agg_layer3_bias = torch.Tensor(stats.trim_mean(resize_layer3_bias, TRIMMED_MEAN_PERCENT)).reshape(models[0].layer3[0].bias.data.size())
+
+    agg_fc1_weight = torch.Tensor(stats.trim_mean(resize_fc1_weight, TRIMMED_MEAN_PERCENT)).reshape(models[0].fc1.weight.data.size())
+    agg_fc1_bias = torch.Tensor(stats.trim_mean(resize_fc1_bias, TRIMMED_MEAN_PERCENT)).reshape(models[0].fc1.bias.data.size())
+
+    agg_fc2_weight = torch.Tensor(stats.trim_mean(resize_fc2_weight, TRIMMED_MEAN_PERCENT)).reshape(models[0].fc2.weight.data.size())
+    agg_fc2_bias = torch.Tensor(stats.trim_mean(resize_fc2_bias, TRIMMED_MEAN_PERCENT)).reshape(models[0].fc2.bias.data.size())
+
+
+    agg_model = CNN().to(device)
+
+    agg_model.layer1[0].weight.data = agg_layer1_weight
+    agg_model.layer1[0].bias.data = agg_layer1_bias
+
+    agg_model.layer2[0].weight.data = agg_layer2_weight
+    agg_model.layer2[0].bias.data = agg_layer2_bias
+
+    agg_model.layer3[0].weight.data = agg_layer3_weight
+    agg_model.layer3[0].bias.data = agg_layer3_bias
+
+    agg_model.fc1.weight.data = agg_fc1_weight
+    agg_model.fc1.bias.data = agg_fc1_bias
+
+    agg_model.fc2.weight.data = agg_fc2_weight
+    agg_model.fc2.bias.data = agg_fc2_bias
+
+    return agg_model
+
 
 def test_label_predictions(model):
     model.eval()
