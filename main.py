@@ -4,7 +4,7 @@ from parameter import WORKER_NUM, TOTAL_ROUND, SAVE_SHARD_MODEL_PATH, MALICIOUS_
 from model import CNN
 import os
 import torch
-from MachineLearningUtility import test_label_predictions, evaluation, fed_avg, median_update
+from MachineLearningUtility import test_label_predictions, evaluation, fed_avg, median_update, krum_update,trimmed_mean_update
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -34,7 +34,6 @@ accuracy8 = []
 accuracy9 = []
 
 models = []
-
 
 for worker_index in range(WORKER_NUM):
     worker_id = "worker" + str(worker_index)
@@ -74,58 +73,6 @@ for round in range(TOTAL_ROUND):
             print("------------- {0} training -------------".format(worker.worker_id))
             worker.loacl_learning()
 
-
-    # FedAvg
-    """ 
-    fed_avg_model = CNN().to(device)
-
-    fed_avg_model.layer1[0].weight.data.fill_(0.0)
-    fed_avg_model.layer1[0].bias.data.fill_(0.0)
-
-    fed_avg_model.layer2[0].weight.data.fill_(0.0)
-    fed_avg_model.layer2[0].bias.data.fill_(0.0)
-
-    fed_avg_model.layer3[0].weight.data.fill_(0.0)
-    fed_avg_model.layer3[0].bias.data.fill_(0.0)
-
-    fed_avg_model.fc1.weight.data.fill_(0.0)
-    fed_avg_model.fc1.bias.data.fill_(0.0)
-
-    fed_avg_model.fc2.weight.data.fill_(0.0)
-    fed_avg_model.fc2.bias.data.fill_(0.0)
-
-    for worker in workers:
-        fed_avg_model.layer1[0].weight.data += worker.model.layer1[0].weight.data
-        fed_avg_model.layer1[0].bias.data += worker.model.layer1[0].bias.data
-
-        fed_avg_model.layer2[0].weight.data += worker.model.layer2[0].weight.data
-        fed_avg_model.layer2[0].bias.data += worker.model.layer2[0].bias.data
-
-        fed_avg_model.layer3[0].weight.data += worker.model.layer3[0].weight.data
-        fed_avg_model.layer3[0].bias.data += worker.model.layer3[0].bias.data
-
-        fed_avg_model.fc1.weight.data += worker.model.fc1.weight.data
-        fed_avg_model.fc1.bias.data += worker.model.fc1.bias.data
-
-        fed_avg_model.fc2.weight.data += worker.model.fc2.weight.data
-        fed_avg_model.fc2.bias.data += worker.model.fc2.bias.data
-
-    fed_avg_model.layer1[0].weight.data = fed_avg_model.layer1[0].weight.data / WORKER_NUM
-    fed_avg_model.layer1[0].bias.data = fed_avg_model.layer1[0].bias.data / WORKER_NUM
-
-    fed_avg_model.layer2[0].weight.data = fed_avg_model.layer2[0].weight.data / WORKER_NUM
-    fed_avg_model.layer2[0].bias.data = fed_avg_model.layer2[0].bias.data / WORKER_NUM
-
-    fed_avg_model.layer3[0].weight.data = fed_avg_model.layer3[0].weight.data / WORKER_NUM
-    fed_avg_model.layer3[0].bias.data = fed_avg_model.layer3[0].bias.data / WORKER_NUM
-
-    fed_avg_model.fc1.weight.data = fed_avg_model.fc1.weight.data / WORKER_NUM
-    fed_avg_model.fc1.bias.data = fed_avg_model.fc1.bias.data / WORKER_NUM
-
-    fed_avg_model.fc2.weight.data = fed_avg_model.fc2.weight.data / WORKER_NUM
-    fed_avg_model.fc2.bias.data = fed_avg_model.fc2.bias.data / WORKER_NUM
-    """
-
     for worker in workers:
         models.append(worker.model)
 
@@ -133,6 +80,10 @@ for round in range(TOTAL_ROUND):
         fed_avg_model = fed_avg(*models)
     elif AGGREGATION == "MEDIAN":
         fed_avg_model = median_update(*models)
+    elif AGGREGATION == "TRIMMED_MEAN":
+        fed_avg_model = trimmed_mean_update(*models)
+    elif AGGREGATION == "KRUM":
+        fed_avg_model = krum_update(*models)
     else:
         print("Wrong AGGREGATION parameter !")
 

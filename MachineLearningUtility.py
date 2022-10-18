@@ -1,11 +1,14 @@
 from model import CNN
 import torch
 from dataloader import get_dataloader
-from parameter import labels, TRIMMED_MEAN_PERCENT
+from parameter import labels, TRIMMED_MEAN_PERCENT, CLUSTER_NUM
 from torch import nn
 from geom_median.torch import compute_geometric_median
 from functools import reduce
 from scipy import stats
+import numpy as np
+from util import modefinder
+from kmeans_pytorch import kmeans
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -207,6 +210,44 @@ def trimmed_mean_update(*models):
 
     agg_model.fc2.weight.data = agg_fc2_weight
     agg_model.fc2.bias.data = agg_fc2_bias
+
+    return agg_model
+
+def krum_update(*models):
+    model_parameter_list = []
+
+    for model in models:
+        layer1_weight = model.layer1[0].weight.data.reshape(reduce(lambda x, y: x * y, model.layer1[0].weight.data.size())).numpy()
+        layer1_bias = model.layer1[0].bias.data.reshape(reduce(lambda x, y: x * y, model.layer1[0].bias.data.size())).numpy()
+
+        layer2_weight = model.layer2[0].weight.data.reshape(reduce(lambda x, y: x * y, model.layer2[0].weight.data.size())).numpy()
+        layer2_bias = model.layer2[0].bias.data.reshape(reduce(lambda x, y: x * y, model.layer2[0].bias.data.size())).numpy()
+
+        layer3_weight = model.layer3[0].weight.data.reshape(reduce(lambda x, y: x * y, model.layer3[0].weight.data.size())).numpy()
+        layer3_bias = model.layer3[0].bias.data.reshape(reduce(lambda x, y: x * y, model.layer3[0].bias.data.size())).numpy()
+
+        fc1_weight = model.fc1.weight.data.reshape(reduce(lambda x, y: x * y, model.fc1.weight.data.size())).numpy()
+        fc1_bias = model.fc1.bias.data.reshape(reduce(lambda x, y: x * y, model.fc1.bias.data.size())).numpy()
+
+        fc2_weight = model.fc2.weight.data.reshape(reduce(lambda x, y: x * y, model.fc2.weight.data.size())).numpy()
+        fc2_bias = model.fc2.bias.data.reshape(reduce(lambda x, y: x * y, model.fc2.bias.data.size())).numpy()
+
+        model_parameters = np.concatenate((layer1_weight, layer1_bias, layer2_weight, layer2_bias, layer3_weight, layer3_bias, fc1_weight, fc1_bias, fc2_weight, fc2_bias))
+        model_parameter_list.append(model_parameters)
+
+    # k means clustering
+    cluster_index, cluster_centers = kmeans(X=torch.Tensor(model_parameter_list), num_clusters=CLUSTER_NUM, distance='euclidean', device=device)
+    mode_index = modefinder(cluster_index.numpy())
+    participanter = np.where(cluster_index == mode_index[0])
+
+    print("Clustering index: {0} \nMode index: {1}".format(cluster_index, mode_index[0]))
+    print("Authorized index: ", participanter[0])
+
+    authorized_model = []
+
+    authorized_model = [models[i] for i in participanter[0]]
+
+    agg_model = fed_avg(*authorized_model)
 
     return agg_model
 
