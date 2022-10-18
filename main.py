@@ -77,12 +77,16 @@ for round in range(TOTAL_ROUND):
         models.append(worker.model)
 
     if AGGREGATION == "FEDAVG":
+        print("FedAvg update")
         fed_avg_model = fed_avg(*models)
     elif AGGREGATION == "MEDIAN":
+        print("Geometric median update")
         fed_avg_model = median_update(*models)
     elif AGGREGATION == "TRIMMED_MEAN":
+        print("Trimmed mean update")
         fed_avg_model = trimmed_mean_update(*models)
     elif AGGREGATION == "KRUM":
+        print("krum update")
         fed_avg_model = krum_update(*models)
     else:
         print("Wrong AGGREGATION parameter !")

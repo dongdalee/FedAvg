@@ -1,7 +1,7 @@
 # main
-WORKER_NUM = 50
-TOTAL_ROUND = 30
-TRAINING_EPOCH = 5
+WORKER_NUM = 10
+TOTAL_ROUND = 3
+TRAINING_EPOCH = 1
 
 # setup for worker
 MINI_BATCH_SIZE = 64
@@ -10,10 +10,18 @@ LEARNING_RATE = 0.0001
 # data set labels
 labels = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']  # Mnist
 
-ATTACK_TYPE = "NOISE_ATTACK"
+AGGREGATION = "KRUM"
+
+ATTACK_TYPE = "MODEL_POISONING"
+
+# for trimmed mean percentage
+TRIMMED_MEAN_PERCENT = 0.1
+
+# for krum: for clustering
+CLUSTER_NUM = 3
 
 # model weight attack
-MALICIOUS_NODE_NUM = 25
+MALICIOUS_NODE_NUM = 0
 GAUSSIAN_MEAN = 0
 GAUSSIAN_SIGMA = 2
 
